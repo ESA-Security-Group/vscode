@@ -90,6 +90,7 @@ import { createTextBufferFactoryFromStream } from 'vs/editor/common/model/textMo
 import { IRemotePathService } from 'vs/workbench/services/path/common/remotePathService';
 import { Direction } from 'vs/base/browser/ui/grid/grid';
 import { IProgressService, IProgressOptions, IProgressWindowOptions, IProgressNotificationOptions, IProgressCompositeOptions, IProgress, IProgressStep, emptyProgress } from 'vs/platform/progress/common/progress';
+import { IWorkingCopyFileService, WorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 export import TestTextResourcePropertiesService = CommonWorkbenchTestServices.TestTextResourcePropertiesService;
 export import TestContextService = CommonWorkbenchTestServices.TestContextService;
@@ -213,6 +214,7 @@ export function workbenchInstantiationService(overrides?: { textFileService?: (i
 	instantiationService.stub(ICodeEditorService, new TestCodeEditorService());
 	instantiationService.stub(IViewletService, new TestViewletService());
 	instantiationService.stub(IWorkingCopyService, new TestWorkingCopyService());
+	instantiationService.stub(IWorkingCopyFileService, instantiationService.createInstance(WorkingCopyFileService));
 
 	return instantiationService;
 }

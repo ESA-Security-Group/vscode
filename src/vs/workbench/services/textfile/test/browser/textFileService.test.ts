@@ -17,11 +17,13 @@ import { IModelService } from 'vs/editor/common/services/modelService';
 import { ModelServiceImpl } from 'vs/editor/common/services/modelServiceImpl';
 import { IFilesConfigurationService } from 'vs/workbench/services/filesConfiguration/common/filesConfigurationService';
 import { IFileDialogService } from 'vs/platform/dialogs/common/dialogs';
+import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 class ServiceAccessor {
 	constructor(
 		@ILifecycleService public lifecycleService: TestLifecycleService,
 		@ITextFileService public textFileService: TestTextFileService,
+		@IWorkingCopyFileService public workingCopyFileService: IWorkingCopyFileService,
 		@IFilesConfigurationService public filesConfigurationService: TestFilesConfigurationService,
 		@IWorkspaceContextService public contextService: TestContextService,
 		@IModelService public modelService: ModelServiceImpl,
@@ -146,7 +148,7 @@ suite('Files - TextFileService', () => {
 		model!.textEditorModel!.setValue('foo');
 		assert.ok(accessor.textFileService.isDirty(model.resource));
 
-		await accessor.textFileService.delete(model.resource);
+		await accessor.workingCopyFileService.delete(model.resource);
 		assert.ok(!accessor.textFileService.isDirty(model.resource));
 	});
 

@@ -40,6 +40,7 @@ import { SyncDescriptor } from 'vs/platform/instantiation/common/descriptors';
 import { IWorkspaceContextService } from 'vs/platform/workspace/common/workspace';
 import { IWorkbenchEnvironmentService } from 'vs/workbench/services/environment/common/environmentService';
 import { ILabelService } from 'vs/platform/label/common/label';
+import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 suite('MainThreadEditors', () => {
 
@@ -83,10 +84,6 @@ suite('MainThreadEditors', () => {
 				createdResources.add(uri);
 				return Promise.resolve(Object.create(null));
 			}
-			delete(resource: URI) {
-				deletedResources.add(resource);
-				return Promise.resolve(undefined);
-			}
 			move(source: URI, target: URI) {
 				movedResources.set(source, target);
 				return Promise.resolve(Object.create(null));
@@ -100,6 +97,12 @@ suite('MainThreadEditors', () => {
 				onDidRevert: Event.None,
 				onDidChangeDirty: Event.None
 			};
+		});
+		services.set(IWorkingCopyFileService, new class extends mock<IWorkingCopyFileService>() {
+			delete(resource: URI) {
+				deletedResources.add(resource);
+				return Promise.resolve(undefined);
+			}
 		});
 		services.set(ITextModelService, new class extends mock<ITextModelService>() {
 			createModelReference(resource: URI): Promise<IReference<IResolvedTextEditorModel>> {

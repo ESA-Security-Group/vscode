@@ -276,24 +276,6 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 		return stat;
 	}
 
-	async delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void> {
-
-		// before event
-		await this._onWillRunOperation.fireAsync({ operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
-
-		// Check for any existing dirty file model for the resource
-		// and do a soft revert before deleting to be able to close
-		// any opened editor with these files
-		const dirtyFiles = this.getDirtyFileModels().map(dirtyFileModel => dirtyFileModel.resource).filter(dirty => isEqualOrParent(dirty, resource));
-		await this.doRevertFiles(dirtyFiles, { soft: true });
-
-		// Now actually delete from disk
-		await this.fileService.del(resource, options);
-
-		// after event
-		this._onDidRunOperation.fire(new FileOperationDidRunEvent(FileOperation.DELETE, resource));
-	}
-
 	//#endregion
 
 	//#region save

@@ -116,11 +116,6 @@ export interface ITextFileService extends IDisposable {
 	 * Copy a file. If the file is dirty, its contents will be preserved and restored.
 	 */
 	copy(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
-
-	/**
-	 * Delete a file. If the file is dirty, it will get reverted and then deleted from disk.
-	 */
-	delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void>;
 }
 
 export interface FileOperationWillRunEvent extends IWaitUntil {

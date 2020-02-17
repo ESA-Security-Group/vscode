@@ -46,6 +46,7 @@ import { mnemonicButtonLabel } from 'vs/base/common/labels';
 import { IFilesConfigurationService } from 'vs/workbench/services/filesConfiguration/common/filesConfigurationService';
 import { IWorkingCopyService, IWorkingCopy } from 'vs/workbench/services/workingCopy/common/workingCopyService';
 import { sequence } from 'vs/base/common/async';
+import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 export const NEW_FILE_COMMAND_ID = 'explorer.newFile';
 export const NEW_FILE_LABEL = nls.localize('newFile', "New File");
@@ -144,7 +145,7 @@ export class GlobalNewUntitledFileAction extends Action {
 	}
 }
 
-async function deleteFiles(workingCopyService: IWorkingCopyService, textFileService: ITextFileService, dialogService: IDialogService, configurationService: IConfigurationService, elements: ExplorerItem[], useTrash: boolean, skipConfirm = false): Promise<void> {
+async function deleteFiles(workingCopyService: IWorkingCopyService, workingCopyFileService: IWorkingCopyFileService, dialogService: IDialogService, configurationService: IConfigurationService, elements: ExplorerItem[], useTrash: boolean, skipConfirm = false): Promise<void> {
 	let primaryButton: string;
 	if (useTrash) {
 		primaryButton = isWindows ? nls.localize('deleteButtonLabelRecycleBin', "&&Move to Recycle Bin") : nls.localize({ key: 'deleteButtonLabelTrash', comment: ['&& denotes a mnemonic'] }, "&&Move to Trash");
@@ -244,7 +245,7 @@ async function deleteFiles(workingCopyService: IWorkingCopyService, textFileServ
 
 	// Call function
 	try {
-		await Promise.all(distinctElements.map(e => textFileService.delete(e.resource, { useTrash: useTrash, recursive: true })));
+		await Promise.all(distinctElements.map(e => workingCopyFileService.delete(e.resource, { useTrash: useTrash, recursive: true })));
 	} catch (error) {
 
 		// Handle error to delete file(s) from a modal confirmation dialog
@@ -274,7 +275,7 @@ async function deleteFiles(workingCopyService: IWorkingCopyService, textFileServ
 
 			skipConfirm = true;
 
-			return deleteFiles(workingCopyService, textFileService, dialogService, configurationService, elements, useTrash, skipConfirm);
+			return deleteFiles(workingCopyService, workingCopyFileService, dialogService, configurationService, elements, useTrash, skipConfirm);
 		}
 	}
 }
@@ -967,7 +968,7 @@ export const moveFileToTrashHandler = async (accessor: ServicesAccessor) => {
 	const explorerService = accessor.get(IExplorerService);
 	const stats = explorerService.getContext(true).filter(s => !s.isRoot);
 	if (stats.length) {
-		await deleteFiles(accessor.get(IWorkingCopyService), accessor.get(ITextFileService), accessor.get(IDialogService), accessor.get(IConfigurationService), stats, true);
+		await deleteFiles(accessor.get(IWorkingCopyService), accessor.get(IWorkingCopyFileService), accessor.get(IDialogService), accessor.get(IConfigurationService), stats, true);
 	}
 };
 
@@ -976,7 +977,7 @@ export const deleteFileHandler = async (accessor: ServicesAccessor) => {
 	const stats = explorerService.getContext(true).filter(s => !s.isRoot);
 
 	if (stats.length) {
-		await deleteFiles(accessor.get(IWorkingCopyService), accessor.get(ITextFileService), accessor.get(IDialogService), accessor.get(IConfigurationService), stats, false);
+		await deleteFiles(accessor.get(IWorkingCopyService), accessor.get(IWorkingCopyFileService), accessor.get(IDialogService), accessor.get(IConfigurationService), stats, false);
 	}
 };
 
