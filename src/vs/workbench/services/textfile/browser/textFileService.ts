@@ -85,7 +85,7 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 		this.lifecycleService.onShutdown(this.dispose, this);
 	}
 
-	//#region text file read / write
+	//#region text file read / write / create
 
 	async read(resource: URI, options?: IReadTextFileOptions): Promise<ITextFileContent> {
 		const content = await this.fileService.readFile(resource, options);
@@ -141,14 +141,6 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 		}
 	}
 
-	async write(resource: URI, value: string | ITextSnapshot, options?: IWriteTextFileOptions): Promise<IFileStatWithMetadata> {
-		return this.fileService.writeFile(resource, toBufferOrReadable(value), options);
-	}
-
-	//#endregion
-
-	//#region text file IO primitives (create, move, copy, delete)
-
 	async create(resource: URI, value?: string | ITextSnapshot, options?: ICreateFileOptions): Promise<IFileStatWithMetadata> {
 
 		// before event
@@ -174,6 +166,14 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 	protected doCreate(resource: URI, value?: string | ITextSnapshot, options?: ICreateFileOptions): Promise<IFileStatWithMetadata> {
 		return this.fileService.createFile(resource, toBufferOrReadable(value), options);
 	}
+
+	async write(resource: URI, value: string | ITextSnapshot, options?: IWriteTextFileOptions): Promise<IFileStatWithMetadata> {
+		return this.fileService.writeFile(resource, toBufferOrReadable(value), options);
+	}
+
+	//#endregion
+
+	//#region text file IO primitives (create, move, copy, delete)
 
 	async move(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata> {
 		return this.moveOrCopy(source, target, true, overwrite);

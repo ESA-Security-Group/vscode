@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import * as assert from 'assert';
 import { URI } from 'vs/base/common/uri';
 import { ILifecycleService } from 'vs/platform/lifecycle/common/lifecycle';
@@ -17,13 +18,11 @@ import { IModelService } from 'vs/editor/common/services/modelService';
 import { ModelServiceImpl } from 'vs/editor/common/services/modelServiceImpl';
 import { IFilesConfigurationService } from 'vs/workbench/services/filesConfiguration/common/filesConfigurationService';
 import { IFileDialogService } from 'vs/platform/dialogs/common/dialogs';
-import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 class ServiceAccessor {
 	constructor(
 		@ILifecycleService public lifecycleService: TestLifecycleService,
 		@ITextFileService public textFileService: TestTextFileService,
-		@IWorkingCopyFileService public workingCopyFileService: IWorkingCopyFileService,
 		@IFilesConfigurationService public filesConfigurationService: TestFilesConfigurationService,
 		@IWorkspaceContextService public contextService: TestContextService,
 		@IModelService public modelService: ModelServiceImpl,
@@ -45,9 +44,7 @@ suite('Files - TextFileService', () => {
 	});
 
 	teardown(() => {
-		if (model) {
-			model.dispose();
-		}
+		model?.dispose();
 		(<TextFileEditorModelManager>accessor.textFileService.files).dispose();
 	});
 
@@ -137,18 +134,6 @@ suite('Files - TextFileService', () => {
 
 
 		await accessor.textFileService.create(model.resource, 'Foo');
-		assert.ok(!accessor.textFileService.isDirty(model.resource));
-	});
-
-	test('delete - dirty file', async function () {
-		model = instantiationService.createInstance(TextFileEditorModel, toResource.call(this, '/path/file.txt'), 'utf8', undefined);
-		(<TextFileEditorModelManager>accessor.textFileService.files).add(model.resource, model);
-
-		await model.load();
-		model!.textEditorModel!.setValue('foo');
-		assert.ok(accessor.textFileService.isDirty(model.resource));
-
-		await accessor.workingCopyFileService.delete(model.resource);
 		assert.ok(!accessor.textFileService.isDirty(model.resource));
 	});
 

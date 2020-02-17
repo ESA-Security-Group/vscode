@@ -80,8 +80,8 @@ suite('MainThreadEditors', () => {
 		services.set(IEditorGroupsService, new TestEditorGroupsService());
 		services.set(ITextFileService, new class extends mock<ITextFileService>() {
 			isDirty() { return false; }
-			create(uri: URI, contents?: string, options?: any) {
-				createdResources.add(uri);
+			create(resource: URI) {
+				createdResources.add(resource);
 				return Promise.resolve(Object.create(null));
 			}
 			move(source: URI, target: URI) {
