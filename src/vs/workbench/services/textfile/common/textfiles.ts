@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from 'vs/base/common/uri';
-import { Event, IWaitUntil } from 'vs/base/common/event';
+import { Event } from 'vs/base/common/event';
 import { IDisposable } from 'vs/base/common/lifecycle';
 import { IEncodingSupport, IModeSupport, ISaveOptions, IRevertOptions, SaveReason } from 'vs/workbench/common/editor';
-import { IBaseStatWithMetadata, IFileStatWithMetadata, IReadFileOptions, IWriteFileOptions, FileOperationError, FileOperationResult, FileOperation } from 'vs/platform/files/common/files';
+import { IBaseStatWithMetadata, IFileStatWithMetadata, IReadFileOptions, IWriteFileOptions, FileOperationError, FileOperationResult, FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/platform/files/common/files';
 import { createDecorator } from 'vs/platform/instantiation/common/instantiation';
 import { ITextEditorModel } from 'vs/editor/common/services/resolverService';
 import { ITextBufferFactory, ITextModel, ITextSnapshot } from 'vs/editor/common/model';
@@ -26,14 +26,14 @@ export interface ITextFileService extends IDisposable {
 	_serviceBrand: undefined;
 
 	/**
-	 * An event that is fired before attempting a certain file operation.
+	 * An event that is fired before attempting a certain text file IO operation.
 	 */
-	readonly onWillRunOperation: Event<FileOperationWillRunEvent>;
+	readonly onWillRunTextFileOperation: Event<FileOperationWillRunEvent>;
 
 	/**
-	 * An event that is fired after a file operation has been performed.
+	 * An event that is fired after a text file IO operation has been performed.
 	 */
-	readonly onDidRunOperation: Event<FileOperationDidRunEvent>;
+	readonly onDidRunTextFileOperation: Event<FileOperationDidRunEvent>;
 
 	/**
 	 * Access to the manager of text file editor models providing further
@@ -116,21 +116,6 @@ export interface ITextFileService extends IDisposable {
 	 * Copy a file. If the file is dirty, its contents will be preserved and restored.
 	 */
 	copy(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
-}
-
-export interface FileOperationWillRunEvent extends IWaitUntil {
-	operation: FileOperation;
-	target: URI;
-	source?: URI;
-}
-
-export class FileOperationDidRunEvent {
-
-	constructor(
-		readonly operation: FileOperation,
-		readonly target: URI,
-		readonly source?: URI | undefined
-	) { }
 }
 
 export interface IReadTextFileOptions extends IReadFileOptions {

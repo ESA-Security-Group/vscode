@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DisposableStore } from 'vs/base/common/lifecycle';
-import { FileChangeType, IFileService, FileOperation } from 'vs/platform/files/common/files';
+import { FileChangeType, IFileService, FileOperation, FileOperationWillRunEvent } from 'vs/platform/files/common/files';
 import { extHostCustomer } from 'vs/workbench/api/common/extHostCustomers';
 import { ExtHostContext, FileSystemEvents, IExtHostContext } from '../common/extHost.protocol';
 import { ITextFileService } from 'vs/workbench/services/textfile/common/textfiles';
@@ -15,6 +15,7 @@ import { Registry } from 'vs/platform/registry/common/platform';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { ILogService } from 'vs/platform/log/common/log';
 import { CancellationTokenSource } from 'vs/base/common/cancellation';
+import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 @extHostCustomer
 export class MainThreadFileSystemEventService {
@@ -28,6 +29,7 @@ export class MainThreadFileSystemEventService {
 		@IProgressService progressService: IProgressService,
 		@IConfigurationService configService: IConfigurationService,
 		@ILogService logService: ILogService,
+		@IWorkingCopyFileService workingCopyFileService: IWorkingCopyFileService
 	) {
 
 		const proxy = extHostContext.getProxy(ExtHostContext.ExtHostFileSystemEventService);
@@ -66,9 +68,7 @@ export class MainThreadFileSystemEventService {
 		messages.set(FileOperation.DELETE, localize('msg-delete', "Running 'File Delete' participants..."));
 		messages.set(FileOperation.MOVE, localize('msg-rename', "Running 'File Rename' participants..."));
 
-
-		this._listener.add(textFileService.onWillRunOperation(e => {
-
+		function onWillRunFileOperation(e: FileOperationWillRunEvent): void {
 			const timeout = configService.getValue<number>('files.participants.timeout');
 			if (timeout <= 0) {
 				return; // disabled
@@ -96,10 +96,14 @@ export class MainThreadFileSystemEventService {
 			});
 
 			e.waitUntil(p);
-		}));
+		}
+
+		this._listener.add(textFileService.onWillRunTextFileOperation(e => onWillRunFileOperation(e)));
+		this._listener.add(workingCopyFileService.onWillRunWorkingCopyFileOperation(e => onWillRunFileOperation(e)));
 
 		// AFTER file operation
-		this._listener.add(textFileService.onDidRunOperation(e => proxy.$onDidRunFileOperation(e.operation, e.target, e.source)));
+		this._listener.add(textFileService.onDidRunTextFileOperation(e => proxy.$onDidRunFileOperation(e.operation, e.target, e.source)));
+		this._listener.add(workingCopyFileService.onDidRunWorkingCopyFileOperation(e => proxy.$onDidRunFileOperation(e.operation, e.target, e.source)));
 	}
 
 	dispose(): void {

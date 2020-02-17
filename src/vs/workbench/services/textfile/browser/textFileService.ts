@@ -6,10 +6,10 @@
 import * as nls from 'vs/nls';
 import { URI } from 'vs/base/common/uri';
 import { Emitter, AsyncEmitter } from 'vs/base/common/event';
-import { IResult, ITextFileOperationResult, ITextFileService, ITextFileStreamContent, ITextFileEditorModel, ITextFileContent, IResourceEncodings, IReadTextFileOptions, IWriteTextFileOptions, toBufferOrReadable, TextFileOperationError, TextFileOperationResult, FileOperationWillRunEvent, FileOperationDidRunEvent, ITextFileSaveOptions, ITextFileEditorModelManager } from 'vs/workbench/services/textfile/common/textfiles';
+import { IResult, ITextFileOperationResult, ITextFileService, ITextFileStreamContent, ITextFileEditorModel, ITextFileContent, IResourceEncodings, IReadTextFileOptions, IWriteTextFileOptions, toBufferOrReadable, TextFileOperationError, TextFileOperationResult, ITextFileSaveOptions, ITextFileEditorModelManager } from 'vs/workbench/services/textfile/common/textfiles';
 import { IRevertOptions, IEncodingSupport } from 'vs/workbench/common/editor';
 import { ILifecycleService } from 'vs/platform/lifecycle/common/lifecycle';
-import { IFileService, FileOperationError, FileOperationResult, IFileStatWithMetadata, ICreateFileOptions, FileOperation } from 'vs/platform/files/common/files';
+import { IFileService, FileOperationError, FileOperationResult, IFileStatWithMetadata, ICreateFileOptions, FileOperation, FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/platform/files/common/files';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { IWorkbenchEnvironmentService } from 'vs/workbench/services/environment/common/environmentService';
 import { IUntitledTextEditorService, IUntitledTextEditorModelManager } from 'vs/workbench/services/untitled/common/untitledTextEditorService';
@@ -45,11 +45,11 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 
 	//#region events
 
-	private _onWillRunOperation = this._register(new AsyncEmitter<FileOperationWillRunEvent>());
-	readonly onWillRunOperation = this._onWillRunOperation.event;
+	private _onWillRunTextFileOperation = this._register(new AsyncEmitter<FileOperationWillRunEvent>());
+	readonly onWillRunTextFileOperation = this._onWillRunTextFileOperation.event;
 
-	private _onDidRunOperation = this._register(new Emitter<FileOperationDidRunEvent>());
-	readonly onDidRunOperation = this._onDidRunOperation.event;
+	private _onDidRunTextFileOperation = this._register(new Emitter<FileOperationDidRunEvent>());
+	readonly onDidRunTextFileOperation = this._onDidRunTextFileOperation.event;
 
 	//#endregion
 
@@ -152,7 +152,7 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 	async create(resource: URI, value?: string | ITextSnapshot, options?: ICreateFileOptions): Promise<IFileStatWithMetadata> {
 
 		// before event
-		await this._onWillRunOperation.fireAsync({ operation: FileOperation.CREATE, target: resource }, CancellationToken.None);
+		await this._onWillRunTextFileOperation.fireAsync({ operation: FileOperation.CREATE, target: resource }, CancellationToken.None);
 
 		const stat = await this.doCreate(resource, value, options);
 
@@ -166,7 +166,7 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 		}
 
 		// after event
-		this._onDidRunOperation.fire(new FileOperationDidRunEvent(FileOperation.CREATE, resource));
+		this._onDidRunTextFileOperation.fire({ operation: FileOperation.CREATE, target: resource });
 
 		return stat;
 	}
@@ -186,7 +186,7 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 	private async moveOrCopy(source: URI, target: URI, move: boolean, overwrite?: boolean): Promise<IFileStatWithMetadata> {
 
 		// before event
-		await this._onWillRunOperation.fireAsync({ operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source }, CancellationToken.None);
+		await this._onWillRunTextFileOperation.fireAsync({ operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source }, CancellationToken.None);
 
 		// find all models that related to either source or target (can be many if resource is a folder)
 		const sourceModels: ITextFileEditorModel[] = [];
@@ -271,7 +271,7 @@ export abstract class AbstractTextFileService extends Disposable implements ITex
 		}));
 
 		// after event
-		this._onDidRunOperation.fire(new FileOperationDidRunEvent(move ? FileOperation.MOVE : FileOperation.COPY, target, source));
+		this._onDidRunTextFileOperation.fire({ operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source });
 
 		return stat;
 	}

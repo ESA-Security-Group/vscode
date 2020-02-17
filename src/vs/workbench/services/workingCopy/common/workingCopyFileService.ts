@@ -8,8 +8,7 @@ import { registerSingleton } from 'vs/platform/instantiation/common/extensions';
 import { Event, Emitter, AsyncEmitter } from 'vs/base/common/event';
 import { URI } from 'vs/base/common/uri';
 import { Disposable } from 'vs/base/common/lifecycle';
-import { FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/workbench/services/textfile/common/textfiles';
-import { IFileService, FileOperation } from 'vs/platform/files/common/files';
+import { IFileService, FileOperation, FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/platform/files/common/files';
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { IWorkingCopyService } from 'vs/workbench/services/workingCopy/common/workingCopyService';
 import { isEqualOrParent } from 'vs/base/common/resources';
@@ -24,14 +23,14 @@ export interface IWorkingCopyFileService {
 	//#region Events
 
 	/**
-	 * An event that is fired before attempting a certain working copy file operation.
+	 * An event that is fired before attempting a certain working copy IO operation.
 	 */
-	readonly onWillRunOperation: Event<FileOperationWillRunEvent>;
+	readonly onWillRunWorkingCopyFileOperation: Event<FileOperationWillRunEvent>;
 
 	/**
-	 * An event that is fired after a working copy file operation has been performed.
+	 * An event that is fired after a working copy IO operation has been performed.
 	 */
-	readonly onDidRunOperation: Event<FileOperationDidRunEvent>;
+	readonly onDidRunWorkingCopyFileOperation: Event<FileOperationDidRunEvent>;
 
 	//#endregion
 
@@ -52,11 +51,11 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 
 	//#region Events
 
-	private readonly _onWillRunOperation = this._register(new AsyncEmitter<FileOperationWillRunEvent>());
-	readonly onWillRunOperation = this._onWillRunOperation.event;
+	private readonly _onWillRunWorkingCopyFileOperation = this._register(new AsyncEmitter<FileOperationWillRunEvent>());
+	readonly onWillRunWorkingCopyFileOperation = this._onWillRunWorkingCopyFileOperation.event;
 
-	private readonly _onDidRunOperation = this._register(new Emitter<FileOperationDidRunEvent>());
-	readonly onDidRunOperation = this._onDidRunOperation.event;
+	private readonly _onDidRunWorkingCopyFileOperation = this._register(new Emitter<FileOperationDidRunEvent>());
+	readonly onDidRunWorkingCopyFileOperation = this._onDidRunWorkingCopyFileOperation.event;
 
 	//#endregion
 
@@ -72,7 +71,7 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 	async delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void> {
 
 		// before event
-		await this._onWillRunOperation.fireAsync({ operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
+		await this._onWillRunWorkingCopyFileOperation.fireAsync({ operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
 
 		// Check for any existing dirty working copies for the resource
 		// and do a soft revert before deleting to be able to close
@@ -84,7 +83,7 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 		await this.fileService.del(resource, options);
 
 		// after event
-		this._onDidRunOperation.fire(new FileOperationDidRunEvent(FileOperation.DELETE, resource));
+		this._onDidRunWorkingCopyFileOperation.fire({ operation: FileOperation.DELETE, target: resource });
 	}
 
 	//#endregion
