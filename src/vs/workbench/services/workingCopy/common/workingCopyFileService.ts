@@ -11,7 +11,7 @@ import { Disposable } from 'vs/base/common/lifecycle';
 import { IFileService, FileOperation, FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/platform/files/common/files';
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { IWorkingCopyService, IWorkingCopy } from 'vs/workbench/services/workingCopy/common/workingCopyService';
-import { isEqualOrParent } from 'vs/base/common/resources';
+import { isEqualOrParent, isEqual } from 'vs/base/common/resources';
 
 export const IWorkingCopyFileService = createDecorator<IWorkingCopyFileService>('workingCopyFileService');
 
@@ -88,7 +88,16 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 	}
 
 	private getDirtyWorkingCopies(resource: URI): IWorkingCopy[] {
-		return this.workingCopyService.dirtyWorkingCopies.filter(dirty => isEqualOrParent(dirty.resource, resource));
+		return this.workingCopyService.dirtyWorkingCopies.filter(dirty => {
+			if (this.fileService.canHandleResource(resource)) {
+				// only check for parents if the resource can be handled
+				// by the file system where we then assume a folder like
+				// path structure
+				return isEqualOrParent(dirty.resource, resource);
+			}
+
+			return isEqual(dirty.resource, resource);
+		});
 	}
 
 	//#endregion
