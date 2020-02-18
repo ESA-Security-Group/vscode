@@ -935,7 +935,7 @@ CommandsRegistry.registerCommand({
 
 export const renameHandler = (accessor: ServicesAccessor) => {
 	const explorerService = accessor.get(IExplorerService);
-	const textFileService = accessor.get(ITextFileService);
+	const workingCopyFileService = accessor.get(IWorkingCopyFileService);
 	const notificationService = accessor.get(INotificationService);
 
 	const stats = explorerService.getContext(false);
@@ -952,7 +952,7 @@ export const renameHandler = (accessor: ServicesAccessor) => {
 				const targetResource = resources.joinPath(parentResource, value);
 				if (stat.resource.toString() !== targetResource.toString()) {
 					try {
-						await textFileService.move(stat.resource, targetResource);
+						await workingCopyFileService.move(stat.resource, targetResource);
 						refreshIfSeparator(value, explorerService);
 					} catch (e) {
 						notificationService.error(e);
@@ -1003,7 +1003,7 @@ export const cutFileHandler = (accessor: ServicesAccessor) => {
 export const DOWNLOAD_COMMAND_ID = 'explorer.download';
 const downloadFileHandler = (accessor: ServicesAccessor) => {
 	const fileService = accessor.get(IFileService);
-	const textFileService = accessor.get(ITextFileService);
+	const workingCopyFileService = accessor.get(IWorkingCopyFileService);
 	const fileDialogService = accessor.get(IFileDialogService);
 	const explorerService = accessor.get(IExplorerService);
 	const stats = explorerService.getContext(true);
@@ -1038,7 +1038,7 @@ const downloadFileHandler = (accessor: ServicesAccessor) => {
 				defaultUri
 			});
 			if (destination) {
-				await textFileService.copy(s.resource, destination, true);
+				await workingCopyFileService.copy(s.resource, destination, true);
 			} else {
 				// User canceled a download. In case there were multiple files selected we should cancel the remainder of the prompts #86100
 				canceled = true;
@@ -1056,7 +1056,7 @@ export const pasteFileHandler = async (accessor: ServicesAccessor) => {
 	const clipboardService = accessor.get(IClipboardService);
 	const explorerService = accessor.get(IExplorerService);
 	const fileService = accessor.get(IFileService);
-	const textFileService = accessor.get(ITextFileService);
+	const workingCopyFileService = accessor.get(IWorkingCopyFileService);
 	const notificationService = accessor.get(INotificationService);
 	const editorService = accessor.get(IEditorService);
 	const configurationService = accessor.get(IConfigurationService);
@@ -1088,9 +1088,9 @@ export const pasteFileHandler = async (accessor: ServicesAccessor) => {
 
 			// Move/Copy File
 			if (pasteShouldMove) {
-				return await textFileService.move(fileToPaste, targetFile);
+				return await workingCopyFileService.move(fileToPaste, targetFile);
 			} else {
-				return await textFileService.copy(fileToPaste, targetFile);
+				return await workingCopyFileService.copy(fileToPaste, targetFile);
 			}
 		} catch (e) {
 			onError(notificationService, new Error(nls.localize('fileDeleted', "The file to paste has been deleted or moved since you copied it. {0}", getErrorMessage(e))));

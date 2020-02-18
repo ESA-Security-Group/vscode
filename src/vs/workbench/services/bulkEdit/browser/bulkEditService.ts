@@ -311,7 +311,7 @@ class BulkEdit {
 				if (options.overwrite === undefined && options.ignoreIfExists && await this._fileService.exists(edit.newUri)) {
 					continue; // not overwriting, but ignoring, and the target file exists
 				}
-				await this._textFileService.move(edit.oldUri, edit.newUri, options.overwrite);
+				await this._workingCopyFileService.move(edit.oldUri, edit.newUri, options.overwrite);
 
 			} else if (!edit.newUri && edit.oldUri) {
 				// delete file

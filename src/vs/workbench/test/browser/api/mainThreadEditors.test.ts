@@ -84,6 +84,13 @@ suite('MainThreadEditors', () => {
 				createdResources.add(resource);
 				return Promise.resolve(Object.create(null));
 			}
+			files = <any>{
+				onDidSave: Event.None,
+				onDidRevert: Event.None,
+				onDidChangeDirty: Event.None
+			};
+		});
+		services.set(IWorkingCopyFileService, new class extends mock<IWorkingCopyFileService>() {
 			move(source: URI, target: URI) {
 				movedResources.set(source, target);
 				return Promise.resolve(Object.create(null));
@@ -92,13 +99,6 @@ suite('MainThreadEditors', () => {
 				copiedResources.set(source, target);
 				return Promise.resolve(Object.create(null));
 			}
-			files = <any>{
-				onDidSave: Event.None,
-				onDidRevert: Event.None,
-				onDidChangeDirty: Event.None
-			};
-		});
-		services.set(IWorkingCopyFileService, new class extends mock<IWorkingCopyFileService>() {
 			delete(resource: URI) {
 				deletedResources.add(resource);
 				return Promise.resolve(undefined);

@@ -18,11 +18,13 @@ import { IModelService } from 'vs/editor/common/services/modelService';
 import { ModelServiceImpl } from 'vs/editor/common/services/modelServiceImpl';
 import { IFilesConfigurationService } from 'vs/workbench/services/filesConfiguration/common/filesConfigurationService';
 import { IFileDialogService } from 'vs/platform/dialogs/common/dialogs';
+import { IWorkingCopyFileService } from 'vs/workbench/services/workingCopy/common/workingCopyFileService';
 
 class ServiceAccessor {
 	constructor(
 		@ILifecycleService public lifecycleService: TestLifecycleService,
 		@ITextFileService public textFileService: TestTextFileService,
+		@IWorkingCopyFileService public workingCopyFileService: IWorkingCopyFileService,
 		@IFilesConfigurationService public filesConfigurationService: TestFilesConfigurationService,
 		@IWorkspaceContextService public contextService: TestContextService,
 		@IModelService public modelService: ModelServiceImpl,
@@ -170,9 +172,9 @@ suite('Files - TextFileService', () => {
 		}
 
 		if (move) {
-			await accessor.textFileService.move(sourceModel.resource, targetModel.resource, true);
+			await accessor.workingCopyFileService.move(sourceModel.resource, targetModel.resource, true);
 		} else {
-			await accessor.textFileService.copy(sourceModel.resource, targetModel.resource, true);
+			await accessor.workingCopyFileService.copy(sourceModel.resource, targetModel.resource, true);
 		}
 
 		assert.equal(targetModel.textEditorModel!.getValue(), 'foo');

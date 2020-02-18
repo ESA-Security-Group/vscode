@@ -432,6 +432,7 @@ export const enum FileOperation {
 }
 
 export interface IFileOperationEvent {
+	readonly correlationId: number;
 	readonly operation: FileOperation;
 	readonly target: URI;
 	readonly source?: URI;
@@ -439,7 +440,9 @@ export interface IFileOperationEvent {
 
 export interface FileOperationWillRunEvent extends IFileOperationEvent, IWaitUntil { }
 
-export interface FileOperationDidRunEvent extends IFileOperationEvent { }
+export interface FileOperationDidFailEvent extends IFileOperationEvent, IWaitUntil { }
+
+export interface FileOperationDidRunEvent extends IFileOperationEvent, IWaitUntil { }
 
 export class FileOperationEvent {
 

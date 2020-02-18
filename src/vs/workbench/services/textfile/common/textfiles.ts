@@ -106,16 +106,6 @@ export interface ITextFileService extends IDisposable {
 	 * the options enable to overwrite.
 	 */
 	create(resource: URI, contents?: string | ITextSnapshot, options?: { overwrite?: boolean }): Promise<IFileStatWithMetadata>;
-
-	/**
-	 * Move a file. If the file is dirty, its contents will be preserved and restored.
-	 */
-	move(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
-
-	/**
-	 * Copy a file. If the file is dirty, its contents will be preserved and restored.
-	 */
-	copy(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
 }
 
 export interface IReadTextFileOptions extends IReadFileOptions {

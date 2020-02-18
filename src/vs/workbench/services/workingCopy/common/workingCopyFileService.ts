@@ -5,16 +5,21 @@
 
 import { createDecorator } from 'vs/platform/instantiation/common/instantiation';
 import { registerSingleton } from 'vs/platform/instantiation/common/extensions';
-import { Event, Emitter, AsyncEmitter } from 'vs/base/common/event';
+import { Event, AsyncEmitter } from 'vs/base/common/event';
 import { URI } from 'vs/base/common/uri';
 import { Disposable } from 'vs/base/common/lifecycle';
-import { IFileService, FileOperation, FileOperationWillRunEvent, FileOperationDidRunEvent } from 'vs/platform/files/common/files';
+import { IFileService, FileOperation, FileOperationWillRunEvent, FileOperationDidRunEvent, IFileStatWithMetadata, FileOperationDidFailEvent } from 'vs/platform/files/common/files';
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { IWorkingCopyService, IWorkingCopy } from 'vs/workbench/services/workingCopy/common/workingCopyService';
 import { isEqualOrParent, isEqual } from 'vs/base/common/resources';
 
 export const IWorkingCopyFileService = createDecorator<IWorkingCopyFileService>('workingCopyFileService');
 
+// TODO@Ben: maybe a better model is that everything is done from the outside
+// like revert and co because the extension should participate?
+// should then also fix delete() and must introduce some event correlation
+// for the before and after hooks...
+// Also: text file model manager should listen, not text file service!
 export interface IWorkingCopyFileService {
 
 	_serviceBrand: undefined;
@@ -28,6 +33,11 @@ export interface IWorkingCopyFileService {
 	readonly onWillRunWorkingCopyFileOperation: Event<FileOperationWillRunEvent>;
 
 	/**
+	 * An event that is fired after a working copy IO operation has failed.
+	 */
+	readonly onDidFailWorkingCopyFileOperation: Event<FileOperationDidFailEvent>;
+
+	/**
 	 * An event that is fired after a working copy IO operation has been performed.
 	 */
 	readonly onDidRunWorkingCopyFileOperation: Event<FileOperationDidRunEvent>;
@@ -38,8 +48,29 @@ export interface IWorkingCopyFileService {
 	//#region File operations
 
 	/**
-	 * Delete working copies that match the provided resource or are children of it. If the working copies
-	 * are dirty, they will get reverted and then deleted from disk.
+	 * Will move working copies matching the provided resource and children
+	 * to the target resource using the associated file service for that resource.
+	 *
+	 * Working copy owners can listen to the `onWillRunWorkingCopyFileOperation` and
+	 * `onDidRunWorkingCopyFileOperation` events to participate.
+	 */
+	move(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
+
+	/**
+	 * Will copy working copies matching the provided resource and children
+	 * to the target using the associated file service for that resource.
+	 *
+	 * Working copy owners can listen to the `onWillRunWorkingCopyFileOperation` and
+	 * `onDidRunWorkingCopyFileOperation` events to participate.
+	 */
+	copy(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata>;
+
+	/**
+	 * Will delete working copies matching the provided resource and children
+	 * using the associated file service for that resource.
+	 *
+	 * Working copy owners can listen to the `onWillRunWorkingCopyFileOperation` and
+	 * `onDidRunWorkingCopyFileOperation` events to participate.
 	 */
 	delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void>;
 
@@ -55,10 +86,15 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 	private readonly _onWillRunWorkingCopyFileOperation = this._register(new AsyncEmitter<FileOperationWillRunEvent>());
 	readonly onWillRunWorkingCopyFileOperation = this._onWillRunWorkingCopyFileOperation.event;
 
-	private readonly _onDidRunWorkingCopyFileOperation = this._register(new Emitter<FileOperationDidRunEvent>());
+	private readonly _onDidFailWorkingCopyFileOperation = this._register(new AsyncEmitter<FileOperationDidFailEvent>());
+	readonly onDidFailWorkingCopyFileOperation = this._onDidFailWorkingCopyFileOperation.event;
+
+	private readonly _onDidRunWorkingCopyFileOperation = this._register(new AsyncEmitter<FileOperationDidRunEvent>());
 	readonly onDidRunWorkingCopyFileOperation = this._onDidRunWorkingCopyFileOperation.event;
 
 	//#endregion
+
+	private correlationIds = 0;
 
 	constructor(
 		@IFileService private fileService: IFileService,
@@ -67,12 +103,51 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 		super();
 	}
 
-	//#region File operations,
+	async move(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata> {
+		return this.moveOrCopy(source, target, true, overwrite);
+	}
 
-	async delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void> {
+	async copy(source: URI, target: URI, overwrite?: boolean): Promise<IFileStatWithMetadata> {
+		return this.moveOrCopy(source, target, false, overwrite);
+	}
+
+	private async moveOrCopy(source: URI, target: URI, move: boolean, overwrite?: boolean): Promise<IFileStatWithMetadata> {
+		const correlationId = this.correlationIds++;
 
 		// before event
-		await this._onWillRunWorkingCopyFileOperation.fireAsync({ operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
+		await this._onWillRunWorkingCopyFileOperation.fireAsync({ correlationId, operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source }, CancellationToken.None);
+
+		// handle dirty working copies depending on the operation:
+		// - move: revert both source and target (if any)
+		// - copy: revert target (if any)
+		const dirtyWorkingCopies = (move ? [...this.getDirtyWorkingCopies(source), ...this.getDirtyWorkingCopies(target)] : this.getDirtyWorkingCopies(target));
+		await Promise.all(dirtyWorkingCopies.map(dirtyWorkingCopy => dirtyWorkingCopy.revert({ soft: true })));
+
+		// now we can rename the source to target via file operation
+		let stat: IFileStatWithMetadata;
+		try {
+			if (move) {
+				stat = await this.fileService.move(source, target, overwrite);
+			} else {
+				stat = await this.fileService.copy(source, target, overwrite);
+			}
+		} catch (error) {
+			await this._onDidFailWorkingCopyFileOperation.fireAsync({ correlationId, operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source }, CancellationToken.None);
+
+			throw error;
+		}
+
+		// after event
+		await this._onDidRunWorkingCopyFileOperation.fireAsync({ correlationId, operation: move ? FileOperation.MOVE : FileOperation.COPY, target, source }, CancellationToken.None);
+
+		return stat;
+	}
+
+	async delete(resource: URI, options?: { useTrash?: boolean, recursive?: boolean }): Promise<void> {
+		const correlationId = this.correlationIds++;
+
+		// before event
+		await this._onWillRunWorkingCopyFileOperation.fireAsync({ correlationId, operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
 
 		// Check for any existing dirty working copies for the resource
 		// and do a soft revert before deleting to be able to close
@@ -81,10 +156,16 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 		await Promise.all(dirtyWorkingCopies.map(dirtyWorkingCopy => dirtyWorkingCopy.revert({ soft: true })));
 
 		// Now actually delete from disk
-		await this.fileService.del(resource, options);
+		try {
+			await this.fileService.del(resource, options);
+		} catch (error) {
+			await this._onDidFailWorkingCopyFileOperation.fireAsync({ correlationId, operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
+
+			throw error;
+		}
 
 		// after event
-		this._onDidRunWorkingCopyFileOperation.fire({ operation: FileOperation.DELETE, target: resource });
+		await this._onDidRunWorkingCopyFileOperation.fireAsync({ correlationId, operation: FileOperation.DELETE, target: resource }, CancellationToken.None);
 	}
 
 	private getDirtyWorkingCopies(resource: URI): IWorkingCopy[] {
@@ -99,8 +180,6 @@ export class WorkingCopyFileService extends Disposable implements IWorkingCopyFi
 			return isEqual(dirty.resource, resource);
 		});
 	}
-
-	//#endregion
 }
 
 registerSingleton(IWorkingCopyFileService, WorkingCopyFileService, true);
